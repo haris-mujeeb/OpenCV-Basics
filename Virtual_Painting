@@ -1,0 +1,69 @@
+import cv2 as cv
+import numpy as np
+
+faceCascade = cv.CascadeClassifier("Resources/haarcascade_frontalface_default.xml")
+
+# image = cv.imread('Resources/majid.jpg')
+
+cameraCapture = cv.VideoCapture(1)
+cameraCapture.set(3,640) # Width
+cameraCapture.set(4,480) # Height
+
+myColor = [[5, 107, 0, 19, 255, 255],  # a list of color
+            [133, 56, 0, 159, 156, 255],
+            [57, 76, 0, 100, 255, 255], 
+            [90, 48, 0, 118, 255, 255]]
+
+myColorValue = [[51, 153, 255], # Orange BGR
+                [255, 0, 255],
+                [0, 255, 0],
+                [255, 0, 0]]
+
+myPoints = [] # [x, y, color_index]
+
+
+def findColor(image, myColor, myColorValue):
+    imageHSV = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+    count = 0
+    newPoints = []
+    for color in myColor:
+        lower = np.array(color[0:3])
+        upper = np.array(color[3:6])
+        mask = cv.inRange(image, lower, upper)
+        # cv.imshow(str(color[0]), mask)
+        x, y = getContours(mask)
+        cv.circle(imageResult, (x,y), 10, myColorValue[count], cv.FILLED)
+        if x!= 0 and y!=0:
+            newPoints.append([x, y, count])
+        count += 1
+    return newPoints
+
+
+def getContours(image):
+    x, y, w, h = 0,0,0,0
+    contours, hierarchy = cv.findContours(image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    for cnt in contours:
+        area = cv.contourArea(cnt)
+        if area>500:
+            cv.drawContours(imageResult, cnt, -1, (255,0,0), 3)
+            perimeter = cv.arcLength(cnt, True)
+            approx = cv.approxPolyDP(cnt, 0.02*perimeter, True)
+            x, y, w, h = cv.boundingRect(approx)
+    return x+w//2, y
+
+def draw(myPoints, myColorValue):
+    for point in myPoints:
+        cv.circle(imageResult, (point[0], point[1]), 10, myColorValue[point[2]], cv.FILLED)
+
+
+success, frame = cameraCapture.read()
+while success:
+    success, image = cameraCapture.read()
+    imageResult = image.copy()
+    newPoints = findColor(image, myColor, myColorValue)
+    for points in newPoints:
+        myPoints.append(points)
+    if len(myPoints) != 0:
+            draw(myPoints, myColorValue)
+    cv.imshow("Result", imageResult)
+    cv.waitKey(1)
